@@ -1,20 +1,16 @@
 version: "3.7"
 
 services:
-
-## --------------------------- ORION (SEUFLUXO WHATSAPP) --------------------------- ##
-
-  # Backend (API FastAPI)
+  # --- Backend (API FastAPI) ---
   api:
     image: seufluxowhatsapp-api:latest
     build:
       context: .
       dockerfile: Dockerfile.backend
     networks:
-      - network ## Nome da rede interna
-    volumes:
-      # Mapeia o .env da VPS para dentro do container
-      - /home/seufluxowhatsapp/.env:/app/.env
+      - network
+    # Os volumes do .env foram removidos para evitar erros de deploy no Swarm.
+    # Adicione as variáveis do .env diretamente no painel Environment Variables do Portainer.
     deploy:
       mode: replicated
       replicas: 1
@@ -23,26 +19,24 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        ## Rota para Webhooks da Evolution API e Endpoints da API
-        - traefik.http.routers.seufluxo_api.rule=Host(`seufluxowhatsapp.transformafuturo.com.br`) && PathPrefix(`/webhook`, `/docs`, `/redoc`, `/auth`, `/contacts`, `/messages`, `/broadcasts`, `/admin`)
+        # Prioridade maior para a API (PathPrefix)
+        - traefik.http.routers.seufluxo_api.priority=20
+        - traefik.http.routers.seufluxo_api.rule=Host(`seufluxowhatsapp.transformafuturo.com.br`) && (PathPrefix(`/webhook`) || PathPrefix(`/docs`) || PathPrefix(`/redoc`) || PathPrefix(`/auth`) || PathPrefix(`/contacts`) || PathPrefix(`/messages`) || PathPrefix(`/broadcasts`) || PathPrefix(`/admin`))
         - traefik.http.routers.seufluxo_api.entrypoints=websecure
         - traefik.http.routers.seufluxo_api.tls.certresolver=letsencryptresolver
         - traefik.http.services.seufluxo_api.loadbalancer.server.port=8000
         - traefik.http.services.seufluxo_api.loadbalancer.passHostHeader=true
-        - traefik.http.routers.seufluxo_api.service=seufluxo_api
 
-  # Frontend (Interface Flet)
+  # --- Frontend (Interface Flet) ---
   frontend:
     image: seufluxowhatsapp-frontend:latest
     build:
       context: .
       dockerfile: Dockerfile.frontend
     networks:
-      - network ## Nome da rede interna
+      - network
     depends_on:
       - api
-    volumes:
-      - /home/seufluxowhatsapp/.env:/app/.env
     environment:
       - BACKEND_URL=http://api:8000
     deploy:
@@ -53,17 +47,15 @@ services:
           - node.role == manager
       labels:
         - traefik.enable=true
-        ## Rota Principal da Interface
+        # Prioridade menor para a interface (Catch-all do Host)
+        - traefik.http.routers.seufluxo_front.priority=10
         - traefik.http.routers.seufluxo_front.rule=Host(`seufluxowhatsapp.transformafuturo.com.br`)
         - traefik.http.routers.seufluxo_front.entrypoints=websecure
         - traefik.http.routers.seufluxo_front.tls.certresolver=letsencryptresolver
         - traefik.http.services.seufluxo_front.loadbalancer.server.port=8080
         - traefik.http.services.seufluxo_front.loadbalancer.passHostHeader=true
-        - traefik.http.routers.seufluxo_front.service=seufluxo_front
-
-## --------------------------- ORION (SEUFLUXO WHATSAPP) --------------------------- ##
 
 networks:
-  network: ## Nome da rede interna
+  network:
     external: true
-    name: network ## Nome da rede interna
+    name: network
