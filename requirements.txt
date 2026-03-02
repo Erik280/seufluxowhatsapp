@@ -1,0 +1,21 @@
+# ---- Backend ----
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+httpx>=0.24.0,<0.29.0
+redis==5.0.1
+supabase==2.3.4
+python-multipart==0.0.9
+minio==7.2.5
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+apscheduler==3.10.4
+websockets==12.0
+pydantic==2.6.1
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# ---- Frontend ----
+flet==0.21.2
+requests==2.31.0
