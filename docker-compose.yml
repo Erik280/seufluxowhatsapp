@@ -1,39 +1,57 @@
-version: "3.9"
+version: '3.8'
 
 services:
+  # --- Backend (FastAPI API) ---
   api:
+    image: seufluxowhatsapp-api:latest
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: whatsapp_api
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
     networks:
       - network
-    depends_on: []
     volumes:
-      - ./backend:/app/backend
+      # Mapeia o .env da VPS para dentro do container
+      # Verifique se este caminho existe na sua VPS
+      - /home/seufluxowhatsapp/.env:/app/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.seufluxo-api.rule=Host(`seufluxowhatsapp.transformafuturo.com.br`) && PathPrefix(`/api`)"
+        - "traefik.http.routers.seufluxo-api.entrypoints=websecure"
+        - "traefik.http.routers.seufluxo-api.tls.certresolver=letsencrypt"
+        - "traefik.http.services.seufluxo-api.loadbalancer.server.port=8000"
 
+  # --- Frontend (Flet UI) ---
   frontend:
+    image: seufluxowhatsapp-frontend:latest
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: whatsapp_frontend
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
     networks:
       - network
     depends_on:
       - api
     volumes:
-      - ./frontend:/app/frontend
+      - /home/seufluxowhatsapp/.env:/app/.env
+    environment:
+      - BACKEND_URL=http://api:8000
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.seufluxo-front.rule=Host(`seufluxowhatsapp.transformafuturo.com.br`)"
+        - "traefik.http.routers.seufluxo-front.entrypoints=websecure"
+        - "traefik.http.routers.seufluxo-front.tls.certresolver=letsencrypt"
+        - "traefik.http.services.seufluxo-front.loadbalancer.server.port=8080"
 
 networks:
   network:
     external: true
+    name: network
